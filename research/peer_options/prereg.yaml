@@ -1,0 +1,42 @@
+# DRAFT pre-registration. Not locked. Locking requires a defined holdout (see `holdout`)
+# and explicit sign-off; after locking, any edit changes the hash and blocks study code.
+version: 1
+status: draft
+hypotheses:
+  H1: "Announcer A's call signals predict peer B's abnormal implied-vol change beyond A's own IV change and the industry-date average."
+  H2: "The H1 effect builds over days 0-5 after A's call rather than being absorbed at the first close (tradable core)."
+  H3: "A's signals predict B's realized earnings move relative to its implied move."
+  H4: "A's directional tone predicts the change in B's 25-delta put skew."
+  H5: {text: "Audio stress features add out-of-sample power over text.", status: deferred}
+signals:
+  - {name: tone_delta, scorer: finbert, comparison: loughran_mcdonald, scope: executive_speech}
+  - {name: hedging_density, terms: loughran_mcdonald_uncertainty, scope: executive_speech}
+  - {name: tone_gap_G, definition: "tone_prepared - tone_qa", scope: executive_speech}
+  - {name: analyst_tone, scope: analyst_questions, role: robustness}
+baseline:
+  window_calls: [4, 8]     # previous 4-8 calls
+  min_calls: 4             # below this the signal is NaN, never imputed
+  standardize: zscore_vs_own_history
+peer_signal:
+  link_weights: industry_membership   # disclosed-link and transcript-mention weights are hooks only
+  formula: "S_BA = link_weight * announcer_signal"
+event_study:
+  outcome: abnormal_iv_change   # peer IV change net of sector-ETF and market-vol components
+  horizon_days: [0, 1, 2, 3, 4, 5]
+  controls: [announcer_iv_change, industry_date_avg_iv_change, announcer_earnings_surprise,
+             announcer_stock_return, peer_iv_rank, days_to_peer_report]
+  fixed_effects: [date]
+  cluster: [date, industry]
+timing:
+  call_duration_minutes: 60        # assumed; true end times unavailable
+  transcript_lag_minutes: 120      # signal_available_at = call_end + lag
+  entry: first_open_after_signal__enter_at_close
+  exit: close_before_peer_report
+  usable_dates: confirmed_only     # estimated earnings dates are never used for decisions
+thresholds:
+  significance: 0.05
+  multiple_testing: holm           # across H1-H4
+  min_events: null                 # TO BE SET BY USER BEFORE LOCKING
+holdout:
+  start: null                      # TO BE SET BY USER BEFORE LOCKING (ISO date)
+  end: null
