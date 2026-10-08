@@ -82,7 +82,7 @@ def test_events_as_of_excludes_estimated_and_future_confirmations():
 def test_seed_is_valid_and_roundtrips(tmp_path, cal):
     seed = build_seed()
     validate_events(seed, cal)
-    assert len(seed) == 6
+    assert len(seed) == 10
     assert {e.date_status for e in seed} == {DateStatus.CONFIRMED, DateStatus.ESTIMATED}
     assert all(e.needs_reverify for e in seed)
     write_csv(seed, tmp_path / "s.csv")
@@ -92,3 +92,25 @@ def test_seed_is_valid_and_roundtrips(tmp_path, cal):
 def test_committed_seed_matches_generator():
     from peer_options.seed import OUT
     assert read_csv(OUT) == build_seed()
+
+
+def test_user_dates_match_their_stated_counts_and_announcement_lead():
+    import csv
+    from peer_options.events import is_decision_usable
+    from peer_options.seed import SEEDS
+
+    by_id = {e.event_id: e for e in build_seed()}
+    with (SEEDS / "tsmc_kla_dates.csv").open(newline="") as fh:
+        for r in csv.DictReader(fh):
+            e = by_id[r["event_id"]]
+            # their count is inclusive of the call day; ours counts steps from entry to exit
+            assert e.window_trading_days + 1 == int(r["trading_days_call_to_report_inclusive"]), e.event_id
+            assert is_decision_usable(e) == (r["announced_before_announcer_call"] == "true")
+            lead = (e.peer_report_datetime - e.status_as_of).days
+            assert lead in (int(r["days_announced_before_report"]), int(r["days_announced_before_report"]) + 1)
+
+
+def test_unannounced_date_is_not_decision_usable():
+    late = ev(date_status=DateStatus.CONFIRMED, source="s", status_as_of=utc(2026, 10, 26))
+    from peer_options.events import is_decision_usable
+    assert not is_decision_usable(late)  # announced after the signal was available

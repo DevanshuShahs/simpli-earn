@@ -158,6 +158,14 @@ def validate_events(events: list[Event], cal: TradingCalendar | None = None) -> 
         raise EventValidationError("\n".join(problems))
 
 
+def is_decision_usable(e: Event) -> bool:
+    """True if the peer's report date was already public when the trade signal became available.
+
+    Events failing this can be studied ex post but not traded on a known-date basis.
+    """
+    return e.date_status is DateStatus.CONFIRMED and e.status_as_of <= e.signal_available_at
+
+
 def events_as_of(events: list[Event], as_of: datetime) -> list[Event]:
     """Events whose peer report date was publicly confirmed at as_of.
 

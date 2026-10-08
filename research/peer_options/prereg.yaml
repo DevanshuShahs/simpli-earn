@@ -9,7 +9,7 @@ hypotheses:
   H4: "A's directional tone predicts the change in B's 25-delta put skew."
   H5: {text: "Audio stress features add out-of-sample power over text.", status: deferred}
 signals:
-  - {name: tone_delta, scorer: finbert, comparison: loughran_mcdonald, scope: executive_speech}
+  - {name: tone_delta, scorer: loughran_mcdonald, scope: executive_speech}   # dictionary-only; FinBERT deliberately excluded
   - {name: hedging_density, terms: loughran_mcdonald_uncertainty, scope: executive_speech}
   - {name: tone_gap_G, definition: "tone_prepared - tone_qa", scope: executive_speech}
   - {name: analyst_tone, scope: analyst_questions, role: robustness}

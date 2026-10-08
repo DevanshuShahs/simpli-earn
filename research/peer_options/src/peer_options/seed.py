@@ -9,11 +9,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from peer_options.calendar import ET
+from dataclasses import replace
+from datetime import timedelta
+
 from peer_options.events import DateStatus, Event, LinkType, make_event, validate_events, write_csv
+from peer_options.import_dates import import_dates_csv
 
 SEED_AS_OF = datetime(2026, 10, 7, tzinfo=timezone.utc)
 SRC = "user_provided_2026-10-07"
-OUT = Path(__file__).resolve().parents[2] / "data" / "seeds" / "events_seed.csv"
+SEEDS = Path(__file__).resolve().parents[2] / "data" / "seeds"
+OUT = SEEDS / "events_seed.csv"
+TSMC_CALL = timedelta(minutes=90)  # official IR page: 14:00-15:30 Taiwan
 
 
 def et(month: int, day: int, hour: int, minute: int = 0) -> datetime:
@@ -32,14 +38,9 @@ def build_seed() -> list[Event]:
         make_event(
             event_id="TSM-LRCX-2026Q3", peer="LRCX", link_type=LinkType.SUPPLIER,
             peer_report=et(10, 21, 17), date_status=C, status_as_of=SEED_AS_OF, source=SRC,
-            notes="TSM '2:00 ET' interpreted as 02:00 ET (TSMC calls at 14:00 Taipei); verify. "
-                  "Peer time is the call start; release is likely earlier the same day.",
+            call_duration=TSMC_CALL,
+            notes="TSMC call 02:00 ET (14:00 Taipei). Peer time is the call start; release is likely earlier.",
             **tsm,
-        ),
-        make_event(
-            event_id="TSM-KLAC-2026Q3", peer="KLAC", link_type=LinkType.SUPPLIER,
-            peer_report=et(10, 29, 16, 30), date_status=E, status_as_of=SEED_AS_OF,
-            notes="~Oct 29 after close, unconfirmed; 16:30 ET is a placeholder.", **tsm,
         ),
         make_event(
             event_id="TXN-NXPI-2026Q3", peer="NXPI",
@@ -62,6 +63,12 @@ def build_seed() -> list[Event]:
             notes="Nov 4 or 5 after close, unconfirmed; earlier date used.", **txn,
         ),
     ]
+    imported = import_dates_csv(
+        SEEDS / "tsmc_kla_dates.csv", link_type=LinkType.SUPPLIER, call_duration=TSMC_CALL
+    )
+    # Confounders known for the live window only; historical ones are not catalogued yet.
+    live_tags = ("confounder:ASML@2026-10-14", "confounder:LRCX_call@2026-10-21")
+    rows += [replace(e, tags=e.tags + live_tags) if e.event_id.endswith("_LIVE") else e for e in imported]
     validate_events(rows)
     return rows
 

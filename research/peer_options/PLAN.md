@@ -11,8 +11,9 @@ H4 put-skew change from directional tone; H5 audio stress (deferred).
 
 ## Decisions
 - Options data: none yet. `OptionsProvider` interface + CSV/Parquet adapter schema only.
-- Tone: `ProsusAI/finbert` via the repo's `load_classifier`/`run_inference` (the repo has no FinBERT, only
-  SubjECTiveQA relevance/specificity models); Loughran-McDonald as the comparison baseline.
+- Tone: Loughran-McDonald dictionary only (master dictionary 1993-2025 in `data/raw/`, gitignored; re-download
+  from sraf.nd.edu). `signals/finbert.py` is kept as an unused, untested optional adapter (the repo has no FinBERT,
+  only SubjECTiveQA relevance/specificity models). Hedging uses the LM Uncertainty list.
 - Transcripts: Seeking Alpha-style text (`RAG/transcripts/`), which has no call end time.
   `call_end = start + 60 min`, flagged `estimated`; `signal_available_at = call_end + 120 min`.
 - Audio deferred.
@@ -40,7 +41,6 @@ Not built: option-data ingestion, abnormal-IV estimation, event-study regression
 - Verify every seed date (`needs_reverify=true`), notably TSM "2:00 ET" (read as 02:00 ET), MCHP Nov 4 vs 5, NXPI Oct 27 vs Nov 2.
 - A vetted source for historical (past-quarter) call and report dates; none are seeded.
 - Holdout period and `min_events` in prereg.yaml (required before it can be locked).
-- Approval to download FinBERT (~440 MB, needs `pip install .[finbert]`) and the official LM master dictionary.
 - Ticker -> sector ETF map when option data work starts.
 
 ## Run
