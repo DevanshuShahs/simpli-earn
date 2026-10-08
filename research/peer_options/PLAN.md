@@ -37,8 +37,7 @@ draft prereg, interfaces for options / event study / trade variants.
 Not built: option-data ingestion, abnormal-IV estimation, event-study regression, backtester, audio.
 
 ## Needs from the user
-- Verify every seed date (`needs_reverify=true`), notably TSM "2:00 ET" (read as 02:00 ET), ON before/after market,
-  MCHP Nov 4 vs 5, NXPI Oct 27 vs Nov 2.
+- Verify every seed date (`needs_reverify=true`), notably TSM "2:00 ET" (read as 02:00 ET), MCHP Nov 4 vs 5, NXPI Oct 27 vs Nov 2.
 - A vetted source for historical (past-quarter) call and report dates; none are seeded.
 - Holdout period and `min_events` in prereg.yaml (required before it can be locked).
 - Approval to download FinBERT (~440 MB, needs `pip install .[finbert]`) and the official LM master dictionary.

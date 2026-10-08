@@ -53,8 +53,8 @@ def build_seed() -> list[Event]:
         ),
         make_event(
             event_id="TXN-ON-2026Q3", peer="ON",
-            peer_report=et(11, 2, 16, 30), date_status=E, status_as_of=SEED_AS_OF,
-            notes="~Nov 2 after close per user, unconfirmed; verify BMO vs AMC.", **txn,
+            peer_report=et(11, 2, 7), date_status=E, status_as_of=SEED_AS_OF,
+            notes="~Nov 2 before the open (user-confirmed BMO), date unconfirmed; 07:00 ET is a placeholder.", **txn,
         ),
         make_event(
             event_id="TXN-MCHP-2026Q3", peer="MCHP",
