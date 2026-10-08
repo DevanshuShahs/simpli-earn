@@ -1,0 +1,17 @@
+# Industry-membership link weights (first-session scope: no disclosed-link or mention weights).
+# Sub-industry / group labels are hand-assigned for the pilot tickers and must be
+# verified against GICS before any result is reported.
+weights:
+  same_sub_industry: 1.0
+  same_industry_group: 0.5
+  different: 0.0
+tickers:
+  TSM:  {group: "Semiconductors & Equipment", sub_industry: "Semiconductors"}
+  LRCX: {group: "Semiconductors & Equipment", sub_industry: "Semiconductor Equipment"}
+  KLAC: {group: "Semiconductors & Equipment", sub_industry: "Semiconductor Equipment"}
+  ASML: {group: "Semiconductors & Equipment", sub_industry: "Semiconductor Equipment"}
+  TXN:  {group: "Semiconductors & Equipment", sub_industry: "Semiconductors"}
+  NXPI: {group: "Semiconductors & Equipment", sub_industry: "Semiconductors"}
+  STM:  {group: "Semiconductors & Equipment", sub_industry: "Semiconductors"}
+  ON:   {group: "Semiconductors & Equipment", sub_industry: "Semiconductors"}
+  MCHP: {group: "Semiconductors & Equipment", sub_industry: "Semiconductors"}
