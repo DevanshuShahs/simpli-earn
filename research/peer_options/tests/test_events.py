@@ -84,7 +84,9 @@ def test_seed_is_valid_and_roundtrips(tmp_path, cal):
     validate_events(seed, cal)
     assert len(seed) == 10
     assert {e.date_status for e in seed} == {DateStatus.CONFIRMED, DateStatus.ESTIMATED}
-    assert all(e.needs_reverify for e in seed)
+    flagged = {e.event_id for e in seed if e.needs_reverify}
+    assert "TXN-NXPI-2026Q3" in flagged and "TSMC_KLA_2026Q3_LIVE" in flagged
+    assert not flagged & {"TSMC_KLA_2025Q3", "TSMC_KLA_2026Q2"}  # sourced historical rows
     write_csv(seed, tmp_path / "s.csv")
     assert read_csv(tmp_path / "s.csv") == seed
 
