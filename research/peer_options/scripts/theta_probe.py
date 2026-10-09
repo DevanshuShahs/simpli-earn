@@ -1,8 +1,10 @@
 """Read-only ThetaData probe: subscriptions, column names and a few rows. Writes nothing; never prints credentials.
 
-Credentials: a creds file (email on line 1, password on line 2) outside the repo.
-    python scripts/theta_probe.py [--creds ~/.thetadata/creds.txt]
-(or set THETADATA_API_KEY in the shell and omit the file). Small sample: KLAC around the 2Q26 event (split 2026-06-11).
+Credentials, first match wins (all outside the repo):
+  1. an env file with THETADATA_API_KEY=...   (--env-file, default ~/.thetadata/env)   [preferred]
+  2. a creds file, email on line 1 and password on line 2   (--creds, default ~/.thetadata/creds.txt)
+  3. THETADATA_API_KEY already set in the shell.
+    python scripts/theta_probe.py Small sample: KLAC around the 2Q26 event (split 2026-06-11).
 """
 import argparse
 import datetime as dt
@@ -35,17 +37,20 @@ def step(name, fn):
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--creds", default=os.path.expanduser("~/.thetadata/creds.txt"))
+    ap.add_argument("--env-file", default=os.path.expanduser("~/.thetadata/env"))
     a = ap.parse_args()
     from thetadata import ThetaClient
 
-    creds = Path(a.creds)
+    creds, envf = Path(a.creds), Path(a.env_file)
     try:
-        if creds.exists():
+        if envf.exists():
+            c = ThetaClient(dotenv_path=envf, dataframe_type="pandas")
+        elif creds.exists():
             c = ThetaClient(creds_file=creds, dataframe_type="pandas")
         elif os.getenv("THETADATA_API_KEY"):
             c = ThetaClient(dataframe_type="pandas")
         else:
-            sys.exit(f"No creds file at {creds} and THETADATA_API_KEY not set.")
+            sys.exit(f"No env file at {envf}, no creds file at {creds}, and THETADATA_API_KEY not set.")
     except Exception as e:  # noqa: BLE001
         sys.exit(f"Authentication failed: {type(e).__name__}: {str(e)[:200]}")
 
