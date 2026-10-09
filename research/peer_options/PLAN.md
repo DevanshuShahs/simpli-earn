@@ -38,8 +38,11 @@ draft prereg, interfaces for options / event study / trade variants.
 Not built: option-data ingestion, abnormal-IV estimation, event-study regression, backtester, audio.
 
 ## Needs from the user
-- Verify every seed date (`needs_reverify=true`), notably TSM "2:00 ET" (read as 02:00 ET), MCHP Nov 4 vs 5, NXPI Oct 27 vs Nov 2.
-- A vetted source for historical (past-quarter) call and report dates; none are seeded.
+- Event dates: done for TSM->KLAC, TSM->LRCX, TXN->NXPI/STM/ON/MCHP (28 events from `data/seeds/*_events.csv`).
+  Two live events have no date yet and are pending: TXN->ON and TXN->MCHP (3Q26). Re-check the IR calendars.
+  onsemi has reported after the close since 4Q25; the live date is unknown.
+- 4 STM events cannot be traded pre-earnings (report the morning after TI's evening call): window 0 or -1.
+- Transcripts for >= 4 (ideally 8) prior calls per announcer (TSMC from 3Q24, TXN likewise) in `data/raw/transcripts/`.
 - Holdout period and `min_events` in prereg.yaml (required before it can be locked).
 - Ticker -> sector ETF map when option data work starts.
 
