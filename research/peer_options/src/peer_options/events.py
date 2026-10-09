@@ -177,6 +177,12 @@ def is_pre_earnings_tradable(e: Event) -> bool:
     return e.window_trading_days >= 1
 
 
+def eligible_for_study(events: list[Event], *, min_window: int = 1) -> list[Event]:
+    """Events kept for the pre-earnings tests. Drops windows shorter than min_window
+    (e.g. STM reporting the morning after TI's evening call), per prereg `event_filter`."""
+    return [e for e in events if e.window_trading_days >= min_window]
+
+
 def is_decision_usable(e: Event) -> bool:
     """True if the peer's report date was already public when the trade signal became available.
 

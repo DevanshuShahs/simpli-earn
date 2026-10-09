@@ -8,7 +8,7 @@ from conftest import utc
 from peer_options.calendar import ET
 from peer_options.events import (
     DateStatus, EventValidationError, LinkType, events_as_of, is_decision_usable, make_event, read_csv,
-    first_reaction_session, is_pre_earnings_tradable, validate_event, validate_events, write_csv,
+    eligible_for_study, first_reaction_session, is_pre_earnings_tradable, validate_event, validate_events, write_csv,
 )
 from peer_options.seed import SEEDS, SOURCES, build_seed
 
@@ -145,3 +145,10 @@ def test_imputations_are_tagged():
 def test_unannounced_date_is_not_decision_usable():
     late = ev(date_status=DateStatus.CONFIRMED, source="s", status_as_of=utc(2026, 10, 26))
     assert not is_decision_usable(late)  # announced after the signal was available
+
+
+def test_study_filter_drops_untradable_stm_events():
+    events = build_seed()[0]
+    kept = {e.event_id for e in eligible_for_study(events)}
+    assert {"TXN_STM_3Q25", "TXN_STM_4Q25", "TXN_STM_1Q26", "TXN_STM_2Q26"}.isdisjoint(kept)
+    assert "TXN_STM_3Q26" in kept and len(kept) == len(events) - 4

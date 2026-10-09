@@ -33,6 +33,9 @@ timing:
   entry: first_open_after_signal__enter_at_close
   exit: close_before_peer_report
   usable_dates: confirmed_only     # estimated earnings dates are never used for decisions
+event_filter:
+  min_window_trading_days: 1   # excludes the 4 TXN->STM events with window 0 or -1 (decided by user)
+  exclude_event_ids: []
 thresholds:
   significance: 0.05
   multiple_testing: holm           # across H1-H4
