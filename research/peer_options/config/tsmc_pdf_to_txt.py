@@ -35,12 +35,15 @@ NOISE = [
     r"^(JANUARY|FEBRUARY|MARCH|APRIL|MAY|JUNE|JULY|AUGUST|SEPTEMBER|OCTOBER|NOVEMBER|DECEMBER) \d{1,2}, \d{4} / \d{1,2}:\d{2}\s*[AP]M,",
     r"^.*Earnings\s*$", r"^©", r"^Copyright", r"Republication or redistribution", r"^All rights reserved",
     r"^Contact Us\s*$", r"www\.refinitiv\.com", r"^THOMSON REUTERS", r"^Refinitiv\b.*(Terms|Privacy)",
-    r"^LSEG STREETEVENTS", r"^prior written consent of LSEG", r"^[A-Z]+ \d{1,2}, \d{4} / \d{1,2}:\d{2}\s*[AP]M, ",
+    r"^LSEG STREETEVENTS", r"^(prior written )?consent of (LSEG|Refinitiv)", r"^\(Chinese, English\)\s*$",
+    r"\b(LSEG|Refinitiv|REFINITIV)\b.*(reserved|trademarks|STREETEVENTS)", r"^[A-Z]+ \d{1,2}, \d{4} / \d{1,2}:\d{2}\s*[AP]M, ",
 ]
 HEADINGS = {"CORPORATEPARTICIPANTS": "corp", "CONFERENCECALLPARTICIPANTS": "anal", "PRESENTATION": "pres",
             "QUESTIONSANDANSWERS": "qa", "DISCLAIMER": "disc"}
 # a run of consecutive [bracketed] blocks followed by the marker (the marker sits after the last block only)
-AFTER_CALL = re.compile(r"(?:\[[^\]]*\]\.?\s*)+\(added by company after the call\)|\(added by company after the call\)", re.S)
+# Bracketed runs ending in the marker are dropped whole. Bare inline tags (incl. "corrected by company") are removed but the
+# adjacent word stays, since the PDF does not delimit which word was inserted or corrected.
+AFTER_CALL = re.compile(r"(?:\[[^\]]*\]\.?\s*)+\(added by company after the call\)|\((?:added|corrected) by company after the call\)", re.S)
 STAGE = re.compile(r"\((?:Spoken in Foreign Language|Event Instructions)\)", re.I)
 PUBLISHED = re.compile(r"All Rights Reserved\.\s*\d+-(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})")
 NOISE_RE = [re.compile(p, re.I) for p in NOISE]
@@ -116,7 +119,7 @@ def parse_participants(lines):
         if h == "pres": break
         if mode is not None and s:
             parts = [p.strip() for p in s.split(" - ")]
-            if len(parts) >= 3:
+            if len(parts) >= 3 and len(parts[0]) < 45:
                 mode[parts[0]] = (parts[1], " - ".join(parts[2:]))
     return corp, anal
 
@@ -133,8 +136,8 @@ def speaker_label(line, corp, anal):
         if name in anal:
             return f"{name} -- {anal[name][0]}, {anal[name][1]}"
         if name[:1].isupper() and not re.search(r"[.!?]$", name):
-            return f"{name} -- {' - '.join(parts[2:])}" if len(parts) == 3 and "analyst" not in parts[2].lower() \
-                else f"{name} -- {parts[1]}, {parts[2]}"
+            title = " - ".join(parts[2:])
+            return f"{name} -- {parts[1]}, {title}" if "analyst" in title.lower() else f"{name} -- {title}"
     return None
 
 
@@ -142,8 +145,8 @@ def participants_from_labels(lines, corp, anal):
     """LSEG header lists have no ' - ' separators, so build the lists from 'Name - Company - Title' speaker lines."""
     for ln in lines:
         parts = [p.strip() for p in ln.strip().split(" - ")]
-        if len(parts) == 3 and speaker_label(ln, {}, {}) not in (None, "Operator"):
-            name, company, title = parts
+        if len(parts) >= 3 and speaker_label(ln, {}, {}) not in (None, "Operator"):
+            name, company, title = parts[0], parts[1], " - ".join(parts[2:])
             (anal if "analyst" in title.lower() else corp).setdefault(name, (company, title))
 
 

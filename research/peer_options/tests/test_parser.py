@@ -189,3 +189,23 @@ def test_real_tsmc_2q26_transcript():
     assert 2000 < len(t.text(Section.QA).split()) < 8000
     assert "LSEG" not in " ".join(u.text for u in t.utterances)
     assert "added by company" not in " ".join(u.text for u in t.utterances)
+
+
+TRANSCRIPT_DIR = REPO / "research" / "peer_options" / "data" / "raw" / "transcripts"
+
+
+@pytest.mark.skipif(not (TRANSCRIPT_DIR / "TSM_2Q25.txt").exists(), reason="converted transcripts not present (gitignored)")
+@pytest.mark.parametrize("period", ["2Q25", "3Q25", "4Q25", "1Q26", "2Q26"])
+def test_all_converted_tsmc_transcripts(period):
+    text = (TRANSCRIPT_DIR / f"TSM_{period}.txt").read_text()
+    t = parse_transcript(text)
+    assert t.qa_boundary_source == "marker"
+    by_role = lambda r: {u.speaker for u in t.utterances if u.role is r}
+    assert by_role(Role.IR) == {"Jeff Su"}
+    assert by_role(Role.EXECUTIVE) == {"C.C. Wei", "Wendell Huang"}
+    assert len(by_role(Role.ANALYST)) >= 7
+    assert all(u.section is Section.QA for u in t.utterances if u.role is Role.ANALYST)
+    assert 1500 < len(t.text(Section.PREPARED).split()) < 4500
+    assert 1500 < len(t.text(Section.QA).split()) < 8000
+    for noise in ("LSEG", "Refinitiv", "StreetEvents", "©", "company after the call", "foreign language", "(Chinese"):
+        assert noise.lower() not in text.lower(), noise
