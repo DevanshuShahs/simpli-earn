@@ -68,6 +68,40 @@ No, demand is robust.
 """
 
 
+# SYNTHETIC fixture in the layout written by config/tsmc_pdf_to_txt.py.
+DASHED = """Company Participants
+Jeff Su - Director of Investor Relations
+C.C. Wei - Chairman and Chief Executive Officer
+
+Conference Call Participants
+Sunny Lin - UBS AG
+
+Prepared Remarks:
+
+Jeff Su -- Director of Investor Relations
+Welcome everyone.
+
+C.C. Wei -- Chairman and Chief Executive Officer
+Demand is strong. We are optimistic.
+Capacity may be tight.
+
+Questions and Answers:
+
+Jeff Su -- Director of Investor Relations
+First question please.
+Sunny Lin.
+
+Operator
+Sunny Lin, UBS.
+
+Sunny Lin -- UBS AG, Analyst
+I am worried about the weakness in demand.
+
+C.C. Wei -- Chairman and Chief Executive Officer
+We see robust demand.
+"""
+
+
 def roles(t):
     return [(u.speaker, u.role.value, u.section.value) for u in t.utterances]
 
@@ -120,3 +154,38 @@ def test_real_transcripts(name, marker, first_prepared):
     assert prepared_exec and prepared_exec[0].speaker == first_prepared
     assert len(qa_analysts) >= 5
     assert not any(u.role is Role.ANALYST for u in t.utterances if u.section is Section.PREPARED)
+
+
+def test_dashed_layout_from_pdf_converter():
+    t = parse_transcript(DASHED)
+    assert t.qa_boundary_source == "marker"
+    assert roles(t) == [
+        ("Jeff Su", "ir", "prepared"),
+        ("C.C. Wei", "executive", "prepared"),
+        ("Jeff Su", "ir", "qa"),
+        ("Operator", "operator", "qa"),
+        ("Sunny Lin", "analyst", "qa"),
+        ("C.C. Wei", "executive", "qa"),
+    ]
+    assert "Questions and Answers" not in " ".join(u.text for u in t.utterances)
+    assert t.text(Section.PREPARED) == "Demand is strong. We are optimistic.\nCapacity may be tight."
+
+
+TSM_2Q26 = REPO / "research" / "peer_options" / "data" / "raw" / "transcripts" / "TSM_2Q26.txt"
+
+
+@pytest.mark.skipif(not TSM_2Q26.exists(), reason="converted TSMC transcript not present (gitignored)")
+def test_real_tsmc_2q26_transcript():
+    t = parse_transcript(TSM_2Q26.read_text())
+    assert t.qa_boundary_source == "marker"
+    prepared = [u for u in t.utterances if u.section is Section.PREPARED]
+    assert [u.speaker for u in prepared] == ["Jeff Su", "Wendell Huang", "C.C. Wei"]
+    assert [u.role.value for u in prepared] == ["ir", "executive", "executive"]
+    qa_analysts = {u.speaker for u in t.utterances if u.section is Section.QA and u.role is Role.ANALYST}
+    assert len(qa_analysts) == 11 and "Sunny Lin" in qa_analysts
+    qa_exec = {u.speaker for u in t.utterances if u.section is Section.QA and u.role is Role.EXECUTIVE}
+    assert qa_exec <= {"C.C. Wei", "Wendell Huang"}
+    assert 1500 < len(t.text(Section.PREPARED).split()) < 4000
+    assert 2000 < len(t.text(Section.QA).split()) < 8000
+    assert "LSEG" not in " ".join(u.text for u in t.utterances)
+    assert "added by company" not in " ".join(u.text for u in t.utterances)

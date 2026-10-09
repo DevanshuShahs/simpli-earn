@@ -1,9 +1,11 @@
 """Split an earnings-call transcript into prepared remarks vs Q&A and tag speakers.
 
-Supported layouts (both seen in RAG/transcripts):
+Supported layouts (the first two are in RAG/transcripts; the third is config/tsmc_pdf_to_txt.py output):
   * "bare":   speaker name alone on a line between blank lines; Company/Conference Call
               Participants lists in the header; usually a 'Question-and-Answer Session' line.
   * "titled": 'Name (Title):' lines, no header lists, usually no Q&A marker.
+  * "dashed": 'Name -- Title[, ...]' lines, bare 'Operator' lines, 'Prepared Remarks:' and
+              'Questions and Answers:' headings (LSEG/Refinitiv PDFs converted by the script above).
 Roles: executive, analyst, operator, ir. Only `executive` speech is scored by default.
 """
 from __future__ import annotations
@@ -46,10 +48,11 @@ class ParsedTranscript:
 
 
 _QA_MARKER = re.compile(
-    r"^(question[- ]and[- ]answer( session)?|questions? (and|&) answers?( session)?|q ?& ?a( session)?)$",
+    r"^(question[- ]and[- ]answer( session)?|questions? (and|&) answers?( session)?|q ?& ?a( session)?):?$",
     re.I,
 )
 _TITLED = re.compile(r"^(?P<name>[^:()]{2,60}?) \((?P<title>[^()]{1,80})\):\s*$")
+_DASHED = re.compile(r"^(?P<name>[^-:()]{2,60}?) -- (?P<title>.{1,120})$")
 _BARE_NAME = re.compile(r"^[A-Z][A-Za-z.'\-]*(?: [A-Za-z.'\-]+){0,4}$")
 _HEADINGS = {"company participants", "conference call participants"}
 
@@ -94,6 +97,7 @@ def parse_transcript(raw: str) -> ParsedTranscript:
     marker_line: int | None = None
     company, conf = _parse_participants(lines)
     have_lists = bool(company or conf)
+    dashed_style = any(_DASHED.match(ln.strip()) for ln in lines)
 
     for i, ln in enumerate(lines):
         s = ln.strip()
@@ -106,6 +110,15 @@ def parse_transcript(raw: str) -> ParsedTranscript:
         if m:
             name, title = m["name"].strip(), m["title"].strip()
             heads.append((i, name, title, _role_from_title(name, title)))
+            continue
+        d = _DASHED.match(s)
+        if d:
+            name, title = d["name"].strip(), d["title"].strip()
+            role = Role.ANALYST if name in conf else _role_from_title(name, title)
+            heads.append((i, name, title, role))
+            continue
+        if dashed_style and s == "Operator":
+            heads.append((i, s, "", Role.OPERATOR))
             continue
         if not (_is_blank(lines, i - 1) and _is_blank(lines, i + 1)):
             continue

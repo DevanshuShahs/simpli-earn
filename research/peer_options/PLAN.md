@@ -37,6 +37,14 @@ Done: scaffold, events table + validators + seed, PIT store + lookahead tests, p
 draft prereg, interfaces for options / event study / trade variants.
 Not built: option-data ingestion, abnormal-IV estimation, event-study regression, backtester, audio.
 
+## Transcript pipeline
+`config/tsmc_pdf_to_txt.py` converts TSMC IR (LSEG StreetEvents) PDFs to the parser's layout and appends
+`data/raw/transcripts/manifest.csv` (including `published_utc` read from the LSEG footer). Needs `pymupdf`
+(pypdf drops word spaces on these PDFs). Text marked "(added by company after the call)" is removed.
+TSMC's site blocks scripted downloads (Cloudflare), so PDFs are saved by hand into `data/raw/pdfs/`.
+Open issue: the 2Q26 transcript was generated 2026-07-17 05:19Z, ~23h after the 06:00Z call, not 2h after.
+Events still use call end + 120 min for `signal_available_at`; decide whether to use `published_utc` instead.
+
 ## Needs from the user
 - Event dates: done for TSM->KLAC, TSM->LRCX, TXN->NXPI/STM/ON/MCHP (28 events from `data/seeds/*_events.csv`).
   Two live events have no date yet and are pending: TXN->ON and TXN->MCHP (3Q26). Re-check the IR calendars.
