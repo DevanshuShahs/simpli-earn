@@ -63,7 +63,7 @@ def _role_from_title(name: str, title: str) -> Role:
         return Role.OPERATOR
     if "analyst" in t:
         return Role.ANALYST
-    if "investor relations" in t or re.search(r"\bir\b", t):
+    if "investor relation" in t or re.search(r"\bir\b", t):  # 'relation' also catches vendor typos
         return Role.IR
     return Role.EXECUTIVE
 

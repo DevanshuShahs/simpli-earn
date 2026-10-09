@@ -195,7 +195,7 @@ TRANSCRIPT_DIR = REPO / "research" / "peer_options" / "data" / "raw" / "transcri
 
 
 @pytest.mark.skipif(not (TRANSCRIPT_DIR / "TSM_2Q25.txt").exists(), reason="converted transcripts not present (gitignored)")
-@pytest.mark.parametrize("period", ["2Q25", "3Q25", "4Q25", "1Q26", "2Q26"])
+@pytest.mark.parametrize("period", ["3Q24", "4Q24", "1Q25", "2Q25", "3Q25", "4Q25", "1Q26", "2Q26"])
 def test_all_converted_tsmc_transcripts(period):
     text = (TRANSCRIPT_DIR / f"TSM_{period}.txt").read_text()
     t = parse_transcript(text)
@@ -209,3 +209,10 @@ def test_all_converted_tsmc_transcripts(period):
     assert 1500 < len(t.text(Section.QA).split()) < 8000
     for noise in ("LSEG", "Refinitiv", "StreetEvents", "©", "company after the call", "foreign language", "(Chinese"):
         assert noise.lower() not in text.lower(), noise
+
+
+def test_ir_role_survives_vendor_title_typo():
+    # 4Q24 vendor title says "Investor Relation" (singular); IR must still be excluded from executive speech.
+    t = parse_transcript(DASHED.replace("Director of Investor Relations", "Director of Investor Relation"))
+    assert {u.speaker for u in t.utterances if u.role is Role.IR} == {"Jeff Su"}
+    assert "Welcome everyone" not in t.text(Section.PREPARED)
