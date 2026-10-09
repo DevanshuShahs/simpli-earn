@@ -7,10 +7,14 @@ from datetime import date, datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 
-from peer_options.calendar import TradingCalendar
+from peer_options.calendar import ET, MARKET_CLOSE, TradingCalendar
 
 ENTRY_RULE = "first_open_after_signal__enter_at_close"
 EXIT_RULE = "close_before_peer_report"
+# Entry and exit fall on the same close: the pre-earnings variant is untradable, event still usable for IV studies.
+NO_PRE_WINDOW_TAG = "no_pre_earnings_window"
+# The peer reports before the earliest possible entry: real event, but outside the pre-earnings design.
+REPORTS_BEFORE_ENTRY_TAG = "peer_reports_before_entry"
 
 
 class LinkType(str, Enum):
@@ -61,6 +65,14 @@ def derive_window(
     return entry, exit_, cal.trading_days_between(entry, exit_)
 
 
+def first_reaction_session(report: datetime, cal: TradingCalendar) -> date:
+    """First regular session in which the market can react to a report at `report`."""
+    local = report.astimezone(ET)
+    if cal.is_trading_day(local.date()) and local.time() < MARKET_CLOSE:
+        return local.date()
+    return cal.next_trading_day(local.date())
+
+
 def make_event(
     *,
     event_id: str,
@@ -85,6 +97,10 @@ def make_event(
     call_end = call_start + call_duration
     available = call_end + transcript_lag
     _, _, n = derive_window(available, peer_report, cal)
+    if n == 0:
+        tags = tags + (NO_PRE_WINDOW_TAG,)
+    elif n < 0:
+        tags = tags + (REPORTS_BEFORE_ENTRY_TAG,)
     return Event(
         event_id=event_id,
         announcer=announcer,
@@ -137,10 +153,8 @@ def validate_event(e: Event, cal: TradingCalendar | None = None) -> list[str]:
     if e.entry_rule != ENTRY_RULE or e.exit_rule != EXIT_RULE:
         errs.append(f"unknown entry/exit rule ({e.entry_rule!r}, {e.exit_rule!r})")
     else:
-        entry, exit_, n = derive_window(e.signal_available_at, e.peer_report_datetime, cal)
-        if n < 1:
-            errs.append(f"no tradable window (entry {entry}, exit {exit_})")
-        elif n != e.window_trading_days:
+        _entry, _exit, n = derive_window(e.signal_available_at, e.peer_report_datetime, cal)
+        if n != e.window_trading_days:
             errs.append(f"window_trading_days={e.window_trading_days} but rules give {n}")
     return errs
 
@@ -156,6 +170,11 @@ def validate_events(events: list[Event], cal: TradingCalendar | None = None) -> 
         problems += [f"{e.event_id}: {m}" for m in validate_event(e, cal)]
     if problems:
         raise EventValidationError("\n".join(problems))
+
+
+def is_pre_earnings_tradable(e: Event) -> bool:
+    """At least one trading day between entry and exit (needed for the vol-drift variant)."""
+    return e.window_trading_days >= 1
 
 
 def is_decision_usable(e: Event) -> bool:
