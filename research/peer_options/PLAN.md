@@ -74,6 +74,14 @@ lists, stock EOD (KLAC, SMH) and index EOD (VIX). Blocked: `option_history_greek
 `option_history_open_interest` (needs a Value plan), so no option history can be pulled until the plan is upgraded.
 KLAC stock EOD is unadjusted: close 2411.64 on 2026-06-11, 254.54 on 2026-06-12 (split first applies on 06-12).
 
+## Exploratory no-options proxy (not preregistered; outside the lock)
+While option history is unavailable (Free plan), `scripts/proxy_report.py` relates TSMC call signals to peers' realized
+reaction using free stock EOD: abnormal return and abnormal Parkinson realized vol of each peer vs SMH from entry to the
+close before the peer reports (`study/proxy.py`, `market/prices.py`). Free EOD reaches back to at least 2024-01 (the 365-day
+limit is per request). KLAC split handled via `config/splits.yaml`. Holdout dates are never fetched (`cap_end_before_holdout`).
+First run (8 development events, 4 distinct signal values): Spearman rho between -0.6 and +0.7 with no pattern across
+signals or horizons; uninformative at this n. Not evidence for or against the option-pricing hypothesis.
+
 ## Needs from the user
 - Event dates: done for TSM->KLAC, TSM->LRCX, TXN->NXPI/STM/ON/MCHP (28 events from `data/seeds/*_events.csv`).
   Two live events have no date yet and are pending: TXN->ON and TXN->MCHP (3Q26). Re-check the IR calendars.

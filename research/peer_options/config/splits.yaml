@@ -1,0 +1,4 @@
+# Manual split table (ThetaData stock EOD is NOT split-adjusted). date = first post-split trading day.
+# Verified from raw EOD: KLAC close 2411.64 on 2026-06-11, 254.54 on 2026-06-12. Add others as detected by jump_flags.
+splits:
+  KLAC: [{date: 2026-06-12, ratio: 10}]
