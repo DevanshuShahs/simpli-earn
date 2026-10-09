@@ -15,7 +15,7 @@ H4 put-skew change from directional tone; H5 audio stress (deferred).
   from sraf.nd.edu). `signals/finbert.py` is kept as an unused, untested optional adapter (the repo has no FinBERT,
   only SubjECTiveQA relevance/specificity models). Hedging uses the LM Uncertainty list.
 - Transcripts: Seeking Alpha-style text (`RAG/transcripts/`), which has no call end time.
-  `call_end = start + 60 min`, flagged `estimated`; `signal_available_at = call_end + 120 min`.
+  `call_end = start + 60 min` (TSMC 90 min per its IR page); `signal_available_at = call_start + 90 min` for all announcers (user decision; the signal is scored from the live call, so vendor publication lag is ignored).
 - Audio deferred.
 
 ## Layout
@@ -43,7 +43,7 @@ Not built: option-data ingestion, abnormal-IV estimation, event-study regression
 (pypdf drops word spaces on these PDFs). Text marked "(added by company after the call)" is removed.
 TSMC's site blocks scripted downloads (Cloudflare), so PDFs are saved by hand into `data/raw/pdfs/`.
 Open issue: the 2Q26 transcript was generated 2026-07-17 05:19Z, ~23h after the 06:00Z call, not 2h after.
-Events still use call end + 120 min for `signal_available_at`; decide whether to use `published_utc` instead.
+`signal_available_at` ignores it by decision (call start + 90 min); `published_utc` is recorded for audit only.
 
 ## Needs from the user
 - Event dates: done for TSM->KLAC, TSM->LRCX, TXN->NXPI/STM/ON/MCHP (28 events from `data/seeds/*_events.csv`).

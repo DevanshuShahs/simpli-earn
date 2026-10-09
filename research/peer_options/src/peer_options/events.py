@@ -85,7 +85,7 @@ def make_event(
     status_as_of: datetime,
     source: str = "",
     call_duration: timedelta = timedelta(minutes=60),
-    transcript_lag: timedelta = timedelta(minutes=120),
+    signal_delay_from_start: timedelta = timedelta(minutes=90),
     call_end_status: DateStatus = DateStatus.ESTIMATED,
     cal: TradingCalendar | None = None,
     needs_reverify: bool = True,
@@ -95,7 +95,7 @@ def make_event(
     """Build an Event, deriving call end, signal availability and window from the rules."""
     cal = cal or TradingCalendar.from_yaml()
     call_end = call_start + call_duration
-    available = call_end + transcript_lag
+    available = call_start + signal_delay_from_start  # signal is scored from the live call, not the vendor transcript
     _, _, n = derive_window(available, peer_report, cal)
     if n == 0:
         tags = tags + (NO_PRE_WINDOW_TAG,)

@@ -29,7 +29,7 @@ event_study:
   cluster: [date, industry]
 timing:
   call_duration_minutes: 60        # assumed; true end times unavailable
-  transcript_lag_minutes: 120      # signal_available_at = call_end + lag
+  signal_available_minutes_after_start: 90   # signal_available_at = call_start + 90 min (user decision)
   entry: first_open_after_signal__enter_at_close
   exit: close_before_peer_report
   usable_dates: confirmed_only     # estimated earnings dates are never used for decisions

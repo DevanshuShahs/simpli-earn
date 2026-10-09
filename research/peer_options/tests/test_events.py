@@ -1,6 +1,6 @@
 import csv
 from dataclasses import replace
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -152,3 +152,12 @@ def test_study_filter_drops_untradable_stm_events():
     kept = {e.event_id for e in eligible_for_study(events)}
     assert {"TXN_STM_3Q25", "TXN_STM_4Q25", "TXN_STM_1Q26", "TXN_STM_2Q26"}.isdisjoint(kept)
     assert "TXN_STM_3Q26" in kept and len(kept) == len(events) - 4
+
+
+def test_signal_available_90_minutes_after_call_start():
+    by_id = {e.event_id: e for e in build_seed()[0]}
+    for e in by_id.values():
+        assert e.signal_available_at - e.announcer_call_start == timedelta(minutes=90), e.event_id
+    tsm, txn = by_id["TSMC_KLA_2025Q3"], by_id["TXN_NXPI_3Q25"]
+    assert tsm.signal_available_at == tsm.announcer_call_end  # TSMC call runs 90 minutes
+    assert txn.signal_available_at - txn.announcer_call_end == timedelta(minutes=30)  # TI call ~60 minutes
