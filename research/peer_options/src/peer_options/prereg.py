@@ -91,3 +91,11 @@ class HoldoutGuard:
                 "first": min(hit).isoformat(),
                 "last": max(hit).isoformat(),
             }) + "\n")
+
+
+def is_holdout_event(announcer_call_start: datetime, bounds: tuple[date, date]) -> bool:
+    """Holdout membership is by announcer call date in ET (prereg `holdout.applies_to`)."""
+    from peer_options.calendar import ET
+
+    d = announcer_call_start.astimezone(ET).date()
+    return bounds[0] <= d <= bounds[1]

@@ -17,10 +17,18 @@ def files(tmp_path):
     return p, tmp_path / "prereg.lock"
 
 
-def test_draft_prereg_cannot_be_locked_until_holdout_defined(tmp_path):
+def test_repo_prereg_is_locked_and_unmodified():
+    """Fails if prereg.yaml was edited after locking. Amend deliberately: delete the lock, edit, re-lock."""
+    prereg.verify()
+    start, end = prereg.holdout_bounds()
+    assert (start, end) == (date(2026, 10, 1), date(2026, 12, 31))
+
+
+def test_prereg_without_holdout_cannot_be_locked(tmp_path):
+    p = tmp_path / "p.yaml"
+    p.write_text(yaml.safe_dump({"version": 1, "holdout": {"start": None, "end": None}}))
     with pytest.raises(PreregError, match="holdout"):
-        prereg.lock(prereg.PREREG, tmp_path / "l")
-    assert not prereg.LOCK.exists()  # the draft in the repo is intentionally unlocked
+        prereg.lock(p, tmp_path / "l")
 
 
 def test_lock_verify_and_tamper_detection(files):
@@ -58,3 +66,14 @@ def test_holdout_guard_blocks_and_logs(files, tmp_path):
     g.check([date(2026, 2, 1)], allow_holdout=True, purpose="final eval")
     rows = [json.loads(x) for x in (tmp_path / "log" / "a.jsonl").read_text().splitlines()]
     assert len(rows) == 1 and rows[0]["purpose"] == "final eval" and rows[0]["n_dates"] == 1
+
+
+def test_seed_split_by_holdout():
+    from peer_options.seed import build_seed
+
+    events = build_seed()[0]
+    b = prereg.holdout_bounds()
+    held = sorted(e.event_id for e in events if prereg.is_holdout_event(e.announcer_call_start, b))
+    assert held == ["TSMC_KLA_2026Q3_LIVE", "TSMC_LRCX_2026Q3_LIVE", "TXN_NXPI_3Q26", "TXN_STM_3Q26"]
+    assert all(e.announcer_call_start.year < 2026 or e.announcer_call_start.month < 10
+               for e in events if e.event_id not in held)

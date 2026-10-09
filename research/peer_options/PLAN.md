@@ -32,6 +32,13 @@ H4 put-skew change from directional tone; H5 audio stress (deferred).
 - Pre-registration: canonical SHA-256 of prereg.yaml in `prereg.lock`; locking is refused while the holdout is
   undefined; holdout access needs `allow_holdout=True` and is appended to `logs/holdout_access.jsonl`.
 
+## Pilot framing and pre-registration (locked 2026-10-08)
+This is a pilot to decide whether a larger study is worth the time. `prereg.yaml` is locked (`prereg.lock`):
+holdout = events with announcer call date 2026-10-01..2026-12-31 (the forward 3Q26 season), `min_events` = 30
+baseline-eligible events before any inferential test; below that, descriptive effect sizes only. The pilot
+cannot reach 30 (about 2 pairs x quarters of TSMC history, TXN pairs have no transcripts), so it yields effect
+sizes and event-level scatter, and the go/no-go on a bigger study is a human call.
+
 ## Status after session 1
 Done: scaffold, events table + validators + seed, PIT store + lookahead tests, parser, signals + tests,
 draft prereg, interfaces for options / event study / trade variants.

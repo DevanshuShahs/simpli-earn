@@ -1,7 +1,13 @@
-# DRAFT pre-registration. Not locked. Locking requires a defined holdout (see `holdout`)
-# and explicit sign-off; after locking, any edit changes the hash and blocks study code.
+# Pre-registration, LOCKED (see prereg.lock). Any edit changes the SHA-256 and blocks study code (prereg.verify).
+# To amend: delete prereg.lock deliberately, edit, re-lock, and record why in the commit message.
 version: 1
-status: draft
+status: locked
+mode: pilot
+purpose: >
+  Pilot to decide whether a larger study is worth the time. It is not a confirmatory test.
+  Below min_events, report descriptive effect sizes and event-level scatter only, with no p-values or
+  significance claims. Whether to invest further is a human decision made after the development-sample
+  descriptives; the forward holdout is the single confirmatory look.
 hypotheses:
   H1: "Announcer A's call signals predict peer B's abnormal implied-vol change beyond A's own IV change and the industry-date average."
   H2: "The H1 effect builds over days 0-5 after A's call rather than being absorbed at the first close (tradable core)."
@@ -39,7 +45,11 @@ event_filter:
 thresholds:
   significance: 0.05
   multiple_testing: holm           # across H1-H4
-  min_events: null                 # TO BE SET BY USER BEFORE LOCKING
+  min_events: 30                   # baseline-eligible events required before any inferential test (not reachable by the pilot)
 holdout:
-  start: null                      # TO BE SET BY USER BEFORE LOCKING (ISO date)
-  end: null
+  # Forward holdout: the 3Q26 reporting season. An event is in the holdout if its announcer call date is in
+  # [start, end] inclusive (ET). Not looked at until the pre-registered specification is final.
+  applies_to: announcer_call_date
+  start: 2026-10-01
+  end: 2026-12-31
+development_sample: events with announcer call date before the holdout start (3Q25 through 2Q26 so far)
