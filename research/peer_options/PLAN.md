@@ -65,7 +65,7 @@ webcast, which is not built.
 Vendor-independent feature layer done: `options/features.py` turns one EOD chain into ATM IV (30d/60d, variance-
 interpolated), 25-delta put skew, bid-ask % of mid, open interest and implied move; tested on synthetic
 Black-Scholes chains only. Not built: the ThetaData fetcher (needs the terminal running and a sample response to
-confirm field names), abnormal-IV estimation, the event study. First pull is deliberately small: TSM, KLAC, LRCX
+confirm field names; the `thetadata` Python library connects directly, no terminal needed; probe: `scripts/theta_probe.py`), abnormal-IV estimation, the event study. First pull is deliberately small: TSM, KLAC, LRCX
 around the 2026 events, to check data quality and plan limits. Credentials via env vars; `creds.txt` and the
 terminal jar are gitignored. KLAC split 10-for-1 on 2026-06-11: check strikes/chains around that date.
 

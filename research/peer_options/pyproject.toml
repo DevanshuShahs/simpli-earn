@@ -8,6 +8,8 @@ dependencies = ["pandas>=2.0", "pyyaml>=6.0", "pyarrow>=14.0"]
 [project.optional-dependencies]
 # Heavy, only needed to run the real FinBERT scorer. Not installed by default.
 finbert = ["torch>=2.0", "transformers>=4.30"]
+# Needs Python >= 3.12 and a ThetaData subscription. The library imports python-dotenv without declaring it.
+theta = ["thetadata>=1.0", "python-dotenv"]
 dev = ["pytest>=8.0"]
 
 [build-system]
