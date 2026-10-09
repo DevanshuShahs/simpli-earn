@@ -69,6 +69,11 @@ confirm field names; the `thetadata` Python library connects directly, no termin
 around the 2026 events, to check data quality and plan limits. Credentials via env vars; `creds.txt` and the
 terminal jar are gitignored. KLAC split 10-for-1 on 2026-06-11: check strikes/chains around that date.
 
+Probe result (2026-10-08): the API key authenticates but the account is on the FREE plan. Free works: option expiration
+lists, stock EOD (KLAC, SMH) and index EOD (VIX). Blocked: `option_history_greeks_eod` (needs a Standard plan) and
+`option_history_open_interest` (needs a Value plan), so no option history can be pulled until the plan is upgraded.
+KLAC stock EOD is unadjusted: close 2411.64 on 2026-06-11, 254.54 on 2026-06-12 (split first applies on 06-12).
+
 ## Needs from the user
 - Event dates: done for TSM->KLAC, TSM->LRCX, TXN->NXPI/STM/ON/MCHP (28 events from `data/seeds/*_events.csv`).
   Two live events have no date yet and are pending: TXN->ON and TXN->MCHP (3Q26). Re-check the IR calendars.
