@@ -52,6 +52,15 @@ TSMC's site blocks scripted downloads (Cloudflare), so PDFs are saved by hand in
 Open issue: the 2Q26 transcript was generated 2026-07-17 05:19Z, ~23h after the 06:00Z call, not 2h after.
 `signal_available_at` ignores it by decision (call start + 90 min); `published_utc` is recorded for audit only.
 
+## Scoring a call (`python -m peer_options.scoring --ticker TSM --period 3Q26`)
+Verifies the prereg lock, scores the call with the LM dictionary, z-scores tone / hedging / gap against the
+firm's earlier calls (as_of = call start + 90 min), derives S_BA per event, and appends one hash-chained record
+to `logs/signals.jsonl` (commit that file). One record per call; re-scoring is refused. `--dry-run` prints only.
+Oct 15 runbook: save the TSMC 3Q26 PDF to `data/raw/pdfs/`, run `config/tsmc_pdf_to_txt.py` on it, then score.
+Caveat: the PDF appears ~23h after the call, so that record is flagged `late` (scored after
+`signal_available_at`), and TSM's own day-0 reaction has already happened. A true live signal needs ASR of the
+webcast, which is not built.
+
 ## Needs from the user
 - Event dates: done for TSM->KLAC, TSM->LRCX, TXN->NXPI/STM/ON/MCHP (28 events from `data/seeds/*_events.csv`).
   Two live events have no date yet and are pending: TXN->ON and TXN->MCHP (3Q26). Re-check the IR calendars.
