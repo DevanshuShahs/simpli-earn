@@ -1,7 +1,7 @@
 """Per ticker-day option features from one end-of-day chain. Vendor-independent.
 
 Chain columns: expiry (date), strike, right ('C'/'P'), bid, ask, iv, delta, open_interest.
-Rules: never extrapolate in maturity or strike (NaN instead); quotes with bid <= 0 or ask < bid are dropped;
+Rules: no extrapolation in strike; none in maturity unless max_extrap_days > 0 (flat, nearest expiry); quotes with bid <= 0 or ask < bid are dropped;
 maturity interpolation is linear in total variance (iv^2 * T); skew is linear in delta then in days.
 """
 from __future__ import annotations
@@ -43,19 +43,15 @@ def _interp(x: float, xs: np.ndarray, ys: np.ndarray) -> float:
 
 
 def _atm_iv(slice_: pd.DataFrame, spot: float) -> float:
-    vals = []
-    for right in ("C", "P"):
-        s = slice_[slice_["right"] == right].drop_duplicates("strike").sort_values("strike")
-        below, above = s[s["strike"] <= spot], s[s["strike"] >= spot]
-        if below.empty or above.empty:
-            continue
-        lo, hi = below.iloc[-1], above.iloc[0]
-        if (spot - lo["strike"]) > MAX_STRIKE_GAP * spot or (hi["strike"] - spot) > MAX_STRIKE_GAP * spot:
-            continue
-        vals.append(lo["iv"] if lo["strike"] == hi["strike"] else
-                    _interp(spot, np.array([lo["strike"], hi["strike"]]), np.array([lo["iv"], hi["iv"]])))
-    vals = [v for v in vals if not math.isnan(v)]
-    return float(np.mean(vals)) if vals else NAN
+    """IV at spot: linear in strike between the bracketing strikes, averaging calls and puts at each strike."""
+    by_k = slice_.groupby("strike")["iv"].mean().sort_index()
+    below, above = by_k[by_k.index <= spot], by_k[by_k.index >= spot]
+    if below.empty or above.empty:
+        return NAN
+    k0, k1 = below.index[-1], above.index[0]
+    if (spot - k0) > MAX_STRIKE_GAP * spot or (k1 - spot) > MAX_STRIKE_GAP * spot:
+        return NAN
+    return float(below.iloc[-1]) if k0 == k1 else _interp(spot, np.array([k0, k1]), np.array([below.iloc[-1], above.iloc[0]]))
 
 
 def _put_iv_at_delta(slice_: pd.DataFrame, target: float = -0.25) -> float:
@@ -63,15 +59,23 @@ def _put_iv_at_delta(slice_: pd.DataFrame, target: float = -0.25) -> float:
     return _interp(target, p["delta"].to_numpy(float), p["iv"].to_numpy(float))
 
 
-def _bracket(per_expiry: dict[date, float], asof: date, target_days: int):
+def _bracket(per_expiry: dict[date, float], asof: date, target_days: int, max_extrap_days: int = 0):
+    """Expiries bracketing the target. With max_extrap_days > 0 and only one side available within that many days,
+    the nearest expiry is returned on both sides (flat extrapolation: the target inherits that expiry's value)."""
     pts = sorted((((e - asof).days), v) for e, v in per_expiry.items() if not math.isnan(v) and (e - asof).days >= 1)
     lo = [p for p in pts if p[0] <= target_days]
     hi = [p for p in pts if p[0] >= target_days]
-    return (lo[-1], hi[0]) if lo and hi else None
+    if lo and hi:
+        return lo[-1], hi[0]
+    if hi and hi[0][0] - target_days <= max_extrap_days:
+        return hi[0], hi[0]
+    if lo and target_days - lo[-1][0] <= max_extrap_days:
+        return lo[-1], lo[-1]
+    return None
 
 
-def constant_maturity_iv(per_expiry_iv: dict[date, float], asof: date, target_days: int) -> float:
-    b = _bracket(per_expiry_iv, asof, target_days)
+def constant_maturity_iv(per_expiry_iv: dict[date, float], asof: date, target_days: int, max_extrap_days: int = 0) -> float:
+    b = _bracket(per_expiry_iv, asof, target_days, max_extrap_days)
     if b is None:
         return NAN
     (d0, v0), (d1, v1) = b
@@ -82,8 +86,8 @@ def constant_maturity_iv(per_expiry_iv: dict[date, float], asof: date, target_da
     return math.sqrt(w / target_days)
 
 
-def constant_maturity_linear(per_expiry: dict[date, float], asof: date, target_days: int) -> float:
-    b = _bracket(per_expiry, asof, target_days)
+def constant_maturity_linear(per_expiry: dict[date, float], asof: date, target_days: int, max_extrap_days: int = 0) -> float:
+    b = _bracket(per_expiry, asof, target_days, max_extrap_days)
     if b is None:
         return NAN
     (d0, v0), (d1, v1) = b
@@ -112,6 +116,7 @@ def compute_features(
     *,
     reaction_date: date | None = None,
     available_after_close: timedelta = timedelta(hours=4),
+    max_extrap_days: int = 0,
 ) -> OptionDayFeatures:
     """Features for one ticker-day. available_at = 16:00 ET + available_after_close (default 20:00 ET)."""
     c = clean_chain(chain)
@@ -121,14 +126,15 @@ def compute_features(
     days = c["expiry"].map(lambda e: (e - trade_date).days)
     near = c[(days >= 15) & (days <= 45) & c["delta"].abs().between(0.3, 0.7)]
     spread = ((near["ask"] - near["bid"]) / ((near["ask"] + near["bid"]) / 2)).median() if len(near) else NAN
-    oi = float(c.loc[(days >= 1) & (days <= 60) & (c["delta"].abs() >= 0.1), "open_interest"].sum())
+    oi_rows = c.loc[(days >= 1) & (days <= 60) & (c["delta"].abs() >= 0.1), "open_interest"]
+    oi = float(oi_rows.sum()) if oi_rows.notna().any() else NAN  # NaN when the source has no open interest
     move = implied_earnings_move(c, spot, reaction_date)[0] if reaction_date else None
     avail = datetime.combine(trade_date, time(16, 0), ET) + available_after_close
     return OptionDayFeatures(
         ticker=ticker, trade_date=trade_date, available_at=avail,
-        atm_iv_30d=constant_maturity_iv(per_atm, trade_date, 30),
-        atm_iv_60d=constant_maturity_iv(per_atm, trade_date, 60),
-        put_skew_25d=constant_maturity_linear(per_skew, trade_date, 30),
+        atm_iv_30d=constant_maturity_iv(per_atm, trade_date, 30, max_extrap_days),
+        atm_iv_60d=constant_maturity_iv(per_atm, trade_date, 60, max_extrap_days),
+        put_skew_25d=constant_maturity_linear(per_skew, trade_date, 30, max_extrap_days),
         bid_ask_pct_mid=float(spread), open_interest=oi,
         implied_earnings_move=None if move is None or math.isnan(move) else move,
     )

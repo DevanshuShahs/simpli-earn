@@ -101,3 +101,12 @@ def test_only_expiries_after_trade_date_and_implied_move():
     assert move == pytest.approx(straddle / SPOT, abs=0.001)
     f = compute_features("SYN", TRADE, chain, SPOT, reaction_date=TRADE + timedelta(days=2))
     assert f.implied_earnings_move == pytest.approx(move)
+
+
+def test_flat_extrapolation_is_opt_in_and_bounded():
+    chain = make_chain(lambda k, d: 0.30, [37, 65])           # nothing at or below 30 days
+    assert math.isnan(compute_features("SYN", TRADE, chain, SPOT).atm_iv_30d)                       # strict by default
+    assert compute_features("SYN", TRADE, chain, SPOT, max_extrap_days=14).atm_iv_30d == pytest.approx(0.30, abs=1e-6)
+    assert math.isnan(compute_features("SYN", TRADE, make_chain(lambda k, d: 0.3, [50]), SPOT, max_extrap_days=14).atm_iv_30d)
+    only_short = compute_features("SYN", TRADE, make_chain(lambda k, d: 0.25, [21]), SPOT, max_extrap_days=14)
+    assert only_short.atm_iv_30d == pytest.approx(0.25, abs=1e-6)                                  # lower side only, 9 days away

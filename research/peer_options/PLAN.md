@@ -82,6 +82,17 @@ limit is per request). KLAC split handled via `config/splits.yaml`. Holdout date
 First run (8 development events, 4 distinct signal values): Spearman rho between -0.6 and +0.7 with no pattern across
 signals or horizons; uninformative at this n. Not evidence for or against the option-pricing hypothesis.
 
+## Implied vol from Free-plan quotes (computed here, not vendor IV)
+ThetaData's own IV/delta (`greeks_eod`) needs a Standard plan and open interest a Value plan, both blocked on Free. But
+`option_history_eod` (full-chain EOD bid/ask/OHLC, back to at least 2024-10) is open on Free, so `options/iv.py` computes
+IV itself: parity forward per expiry, Black-76 inverted on OTM mids, forward delta. Sanity check on real SPY quotes:
+ATM 30d IV 13.8 / 15.3 vs VIX 16.7 / 18.8 on 2026-07-16 / 17 (VIX sits ~3 pts higher; measured 25d put skew was 2.9-3.4).
+Limits: European pricing of American options, no open interest (feature is NaN), flat-vol fallback up to 14 days when no
+expiry brackets 30d (KLAC lists monthlies only). Free plan allows one request at a time (~9s each); the fetch cache is
+coverage-aware. `scripts/iv_report.py` produces the development-sample table (descriptive; prereg controls not estimated).
+Not done: IV rank (needs ~1y of IV history per name), H3 (realized vs implied move), SMH/VIX regression betas (simple
+difference vs SMH used), TXN pairs (no announcer transcripts).
+
 ## Needs from the user
 - Event dates: done for TSM->KLAC, TSM->LRCX, TXN->NXPI/STM/ON/MCHP (28 events from `data/seeds/*_events.csv`).
   Two live events have no date yet and are pending: TXN->ON and TXN->MCHP (3Q26). Re-check the IR calendars.

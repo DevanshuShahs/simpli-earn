@@ -16,13 +16,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from peer_options import prereg  # noqa: E402
 from peer_options.calendar import TradingCalendar  # noqa: E402
-from peer_options.events import eligible_for_study  # noqa: E402
-from peer_options.links import IndustryMembershipWeights  # noqa: E402
 from peer_options.market.prices import cap_end_before_holdout, jump_flags, load_prices  # noqa: E402
-from peer_options.scoring import LM_MASTER, score_call  # noqa: E402
-from peer_options.seed import build_seed  # noqa: E402
-from peer_options.signals.hedging import uncertainty_terms_from_master_csv  # noqa: E402
-from peer_options.signals.tone import LoughranMcDonaldScorer  # noqa: E402
+from peer_options.study.dev_sample import dev_events_with_signals  # noqa: E402
 from peer_options.study.proxy import peer_outcomes  # noqa: E402
 
 BENCH, START = "SMH", date(2025, 8, 1)
@@ -33,9 +28,8 @@ def main() -> None:
     prereg.verify()
     bounds = prereg.holdout_bounds()
     cal = TradingCalendar.from_yaml()
-    events, _ = build_seed()
-    dev = [e for e in eligible_for_study(events)
-           if e.announcer == "TSM" and not prereg.is_holdout_event(e.announcer_call_start, bounds)]
+    sig_events = dev_events_with_signals("TSM")
+    dev = [e for e, _ in sig_events]
     end = cap_end_before_holdout(date.today())
     print(f"development events: {len(dev)} | price data {START}..{end} (holdout starts {bounds[0]})")
 
@@ -44,20 +38,8 @@ def main() -> None:
         print(f"  {s}: {len(df)} bars {df['date'].min()}..{df['date'].max()}, jumps>35%: {jump_flags(df)}")
     prereg.HoldoutGuard.from_prereg().check([d for df in px.values() for d in df["date"]])  # raises if any touch
 
-    scorer = LoughranMcDonaldScorer.from_master_csv(str(LM_MASTER))
-    unc = uncertainty_terms_from_master_csv(str(LM_MASTER))
-    weights = IndustryMembershipWeights.from_yaml()
-    manifest = pd.read_csv(LM_MASTER.parent / "transcripts" / "manifest.csv")
-    sig = {}
-    for e in dev:
-        start = e.announcer_call_start.strftime("%Y-%m-%dT%H:%M:%SZ")
-        period = manifest.loc[manifest["call_start_utc"] == start, "period"].iloc[0]
-        if period not in sig:
-            sig[period] = score_call("TSM", period, events=events, weights=weights, scorer=scorer, uncertainty_terms=unc)
     rows = []
-    for e in dev:
-        period = manifest.loc[manifest["call_start_utc"] == e.announcer_call_start.strftime("%Y-%m-%dT%H:%M:%SZ"), "period"].iloc[0]
-        s = next(p for p in sig[period]["peer_signals"] if p["event_id"] == e.event_id)["S_BA"]
+    for e, s in sig_events:
         out = {o.k: o for o in peer_outcomes(e, px[e.peer], px[BENCH], cal)}
         row = {"event": e.event_id, "peer": e.peer, "n_days": len(out), **{f"S_{k}": s[k] for k in ("tone", "hedge", "gap")}}
         for k in KS:
