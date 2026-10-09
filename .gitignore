@@ -34,3 +34,8 @@ research/peer_options/paper_trades/
 .pytest_cache/
 __pycache__/
 *.egg-info/
+
+# ThetaData terminal and credentials
+research/peer_options/vendor/
+creds.txt
+ThetaTerminal*.jar

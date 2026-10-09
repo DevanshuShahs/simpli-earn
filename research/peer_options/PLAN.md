@@ -61,6 +61,14 @@ Caveat: the PDF appears ~23h after the call, so that record is flagged `late` (s
 `signal_available_at`), and TSM's own day-0 reaction has already happened. A true live signal needs ASR of the
 webcast, which is not built.
 
+## Option data (ThetaData, 2024-10-01 to date)
+Vendor-independent feature layer done: `options/features.py` turns one EOD chain into ATM IV (30d/60d, variance-
+interpolated), 25-delta put skew, bid-ask % of mid, open interest and implied move; tested on synthetic
+Black-Scholes chains only. Not built: the ThetaData fetcher (needs the terminal running and a sample response to
+confirm field names), abnormal-IV estimation, the event study. First pull is deliberately small: TSM, KLAC, LRCX
+around the 2026 events, to check data quality and plan limits. Credentials via env vars; `creds.txt` and the
+terminal jar are gitignored. KLAC split 10-for-1 on 2026-06-11: check strikes/chains around that date.
+
 ## Needs from the user
 - Event dates: done for TSM->KLAC, TSM->LRCX, TXN->NXPI/STM/ON/MCHP (28 events from `data/seeds/*_events.csv`).
   Two live events have no date yet and are pending: TXN->ON and TXN->MCHP (3Q26). Re-check the IR calendars.
