@@ -153,9 +153,10 @@ def test_real_tsmc_2q26_matches_pilot_table():
         "TSM", "2Q26", events=build_seed()[0], weights=IndustryMembershipWeights.from_yaml(),
         scorer=LoughranMcDonaldScorer.from_master_csv(str(LM_MASTER)),
         uncertainty_terms=uncertainty_terms_from_master_csv(str(LM_MASTER)))
-    assert rec["n_prior_calls"] == 7 and rec["late"] is True and rec["in_holdout"] is False
-    assert rec["z"]["tone"]["z"] == pytest.approx(-1.12, abs=0.01)
-    assert rec["z"]["hedge"]["z"] == pytest.approx(1.19, abs=0.01)
-    assert rec["z"]["gap"]["z"] == pytest.approx(1.66, abs=0.01)
+    # 12 prior transcripts exist (2Q23-1Q26); the baseline uses the last 8 (2Q24-1Q26).
+    assert rec["n_prior_calls"] == 12 and rec["late"] is True and rec["in_holdout"] is False
+    assert rec["z"]["tone"]["z"] == pytest.approx(-0.58, abs=0.01)
+    assert rec["z"]["hedge"]["z"] == pytest.approx(0.97, abs=0.01)
+    assert rec["z"]["gap"]["z"] == pytest.approx(1.13, abs=0.01)
     assert {p["event_id"] for p in rec["peer_signals"]} == {"TSMC_KLA_2026Q2", "TSMC_LRCX_2026Q2"}
     assert len(rec["transcript_sha256"]) == 64 and rec["prereg_hash"] == prereg.verify()

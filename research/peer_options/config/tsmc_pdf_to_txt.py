@@ -150,7 +150,7 @@ def participants_from_labels(lines, corp, anal):
             (anal if "analyst" in title.lower() else corp).setdefault(name, (company, title))
 
 
-def convert(text):
+def convert(text, analysts=()):
     published = PUBLISHED.search(text)
     text = text.replace("\f", "")
     start, period = parse_event(text)
@@ -166,6 +166,11 @@ def convert(text):
     if "qa" not in hi: sys.exit("No 'QUESTIONS AND ANSWERS' heading found.")
     if not corp and not anal:
         participants_from_labels(lines, corp, anal)
+    # Some LSEG PDFs (2Q23-1Q24) file sell-side analysts under Company Participants; --analyst moves them.
+    for n in analysts:
+        if n in corp:
+            corp_title = corp.pop(n)[1]
+            anal[n] = ("Sell-side", f"Analyst ({corp_title})")
     prepared_lines = lines[hi["pres"] + 1:hi["qa"]]
     qa_lines = lines[hi["qa"] + 1:hi.get("disc", len(lines))]
     removed = [0]
@@ -217,9 +222,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("input"); ap.add_argument("--ticker", default="TSM")
     ap.add_argument("--outdir", default="research/peer_options/data/raw/transcripts")
+    ap.add_argument("--analyst", action="append", default=[], help="name mis-filed as a company participant; repeatable")
     ap.add_argument("--source", default=""); ap.add_argument("--published-utc", default="")
     a = ap.parse_args()
-    txt, start, period, np_, nq, wp, wq, pub, removed = convert(extract_text(a.input))
+    txt, start, period, np_, nq, wp, wq, pub, removed = convert(extract_text(a.input), a.analyst)
     a.published_utc = a.published_utc or pub
     os.makedirs(a.outdir, exist_ok=True)
     fname = f"{a.ticker}_{period}.txt"

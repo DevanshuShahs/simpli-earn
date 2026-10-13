@@ -28,14 +28,16 @@ from peer_options.options.iv import chain_with_iv  # noqa: E402
 from peer_options.options.theta_eod import OptionEodStore, needed_expirations, rate_on  # noqa: E402
 from peer_options.study.dev_sample import dev_events_with_signals  # noqa: E402
 
-BENCH, START, KS, MIN_DTE, MAX_DTE = "SMH", date(2025, 8, 1), (1, 3, 5), 1, 100
+BENCH, START, KS, MIN_DTE, MAX_DTE = "SMH", date(2024, 1, 1), (1, 3, 5), 1, 100
 MAX_EXTRAP = 14  # flat-vol fallback (days) when no listed expiry brackets the 30d target, e.g. monthly-only KLAC
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def main() -> None:
     cal, end = TradingCalendar.from_yaml(), cap_end_before_holdout(date.today())
-    sig_events = dev_events_with_signals("TSM")
+    # Calls with fewer than 4 prior transcripts have no signal (2Q23-1Q24): their option chains are not fetched.
+    sig_events = [(e, s) for e, s in dev_events_with_signals("TSM")
+                  if s and all(s.get(k) is not None and np.isfinite(s[k]) for k in ("tone", "hedge", "gap"))]
     # trading days needed per event: the reference close, then entry .. min(exit, entry + 5 steps)
     plan = {}
     for e, _ in sig_events:

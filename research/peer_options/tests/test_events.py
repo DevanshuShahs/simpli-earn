@@ -57,7 +57,10 @@ def test_rejects_naive_and_non_utc(cal):
 
 def test_report_before_signal_is_an_error(cal):
     e = ev(peer_report=datetime(2026, 10, 21, 18, 0, tzinfo=ET))  # before signal_available_at 19:30 ET
-    assert any("after signal_available_at" in m for m in validate_event(e, cal))
+    assert e.window_trading_days == -1 and "peer_reports_before_entry" in e.tags
+    assert validate_event(e, cal) == []  # a tagged real event the study drops, not a bad row
+    untagged = replace(e, tags=())
+    assert any("after signal_available_at" in m for m in validate_event(untagged, cal))
 
 
 def test_zero_and_negative_windows_are_tagged_not_rejected(cal):
@@ -93,7 +96,7 @@ def test_events_as_of_excludes_estimated_and_future_confirmations():
 def test_seed_is_valid_and_roundtrips(tmp_path, cal):
     seed, pending = build_seed()
     validate_events(seed, cal)
-    assert len(seed) == 28
+    assert len(seed) == 46
     assert {p.event_id for p in pending} == {"TXN_ON_3Q26", "TXN_MCHP_3Q26"}  # dates not announced yet
     assert {e.date_status for e in seed} == {DateStatus.CONFIRMED}  # only announced dates are events
     flagged = {e.event_id for e in seed if e.needs_reverify}
@@ -119,7 +122,10 @@ def test_user_columns_agree_with_independent_calendar_math(fname, cal):
                 continue
             call_d = e.announcer_call_start.astimezone(ET).date()
             rep_d = e.peer_report_datetime.astimezone(ET).date()
-            assert cal.trading_days_between(call_d, rep_d) + 1 == int(r["trading_days_call_to_report_inclusive"]), e.event_id
+            if rep_d < call_d:  # peer reported before the call: no window to count
+                assert r["trading_days_call_to_report_inclusive"] == "", e.event_id
+            else:
+                assert cal.trading_days_between(call_d, rep_d) + 1 == int(r["trading_days_call_to_report_inclusive"]), e.event_id
             assert first_reaction_session(e.peer_report_datetime, cal).isoformat() == r["first_reaction_session"], e.event_id
             assert is_decision_usable(e) == (r["announced_before_announcer_call"] == "true"), e.event_id
             assert (rep_d - e.status_as_of.astimezone(ET).date()).days == int(r["days_announced_before_report"]), e.event_id
@@ -151,7 +157,8 @@ def test_study_filter_drops_untradable_stm_events():
     events = build_seed()[0]
     kept = {e.event_id for e in eligible_for_study(events)}
     assert {"TXN_STM_3Q25", "TXN_STM_4Q25", "TXN_STM_1Q26", "TXN_STM_2Q26"}.isdisjoint(kept)
-    assert "TXN_STM_3Q26" in kept and len(kept) == len(events) - 4
+    assert "TSMC_LRCX_2023Q3" not in kept  # LRCX reported the day before TSMC's call
+    assert "TXN_STM_3Q26" in kept and len(kept) == len(events) - 5
 
 
 def test_signal_available_90_minutes_after_call_start():

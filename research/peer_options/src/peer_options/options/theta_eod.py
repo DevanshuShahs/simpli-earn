@@ -105,7 +105,11 @@ class OptionEodStore:
         path = self.cache_dir / f"SOFR_{start}_{end}.parquet"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         if not path.exists():
-            self.client.interest_rate_history_eod(symbol="SOFR", start_date=start, end_date=end).to_parquet(path)
+            from peer_options.market.prices import date_chunks  # requests are capped at 365 days
+
+            parts = [self.client.interest_rate_history_eod(symbol="SOFR", start_date=a, end_date=b)
+                     for a, b in date_chunks(start, end)]
+            pd.concat(parts, ignore_index=True).to_parquet(path)
         r = pd.read_parquet(path)
         return pd.Series(r["rate"].astype(float).to_numpy(), index=pd.to_datetime(r["created"]).dt.date).sort_index()
 

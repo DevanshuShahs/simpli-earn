@@ -148,7 +148,9 @@ def validate_event(e: Event, cal: TradingCalendar | None = None) -> list[str]:
         errs.append("announcer_call_end must be after announcer_call_start")
     if e.signal_available_at < e.announcer_call_end:
         errs.append("signal_available_at must be >= announcer_call_end")
-    if e.peer_report_datetime <= e.signal_available_at:
+    # A report before the signal is a real event the study drops (window -1, tagged), not a bad row.
+    reported_first = e.peer_report_datetime <= e.signal_available_at
+    if reported_first and not (e.window_trading_days == -1 and REPORTS_BEFORE_ENTRY_TAG in e.tags):
         errs.append("peer_report_datetime must be after signal_available_at")
     if e.entry_rule != ENTRY_RULE or e.exit_rule != EXIT_RULE:
         errs.append(f"unknown entry/exit rule ({e.entry_rule!r}, {e.exit_rule!r})")
